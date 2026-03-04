@@ -1,5 +1,5 @@
 - 👋 Hi, I’m @toastfacek
-- 👀 I’m interested in AI coding
+- 👀 I like talking to computers
 - 🌱 I’m currently learning basic shit
 - 💞️ I’m looking to collaborate on app ideas
 - 📫 How to reach me @toastface on twitter
