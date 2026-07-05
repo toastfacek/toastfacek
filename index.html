@@ -1,0 +1,1381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dividend Income Modeler</title>
+</head>
+<body>
+<style>
+  :root {
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --accent: #2a78d6;
+    --accent-strong: #1c5cab;
+    --accent-soft: #cde2fb;
+    --accent-wash: rgba(42, 120, 214, 0.10);
+    --good: #006300;
+    --bad: #d03b3b;
+    --tooltip-bg: #0b0b0b;
+    --tooltip-ink: #ffffff;
+    --tooltip-ink-2: #c3c2b7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --accent: #3987e5;
+      --accent-strong: #6da7ec;
+      --accent-soft: #10427f;
+      --accent-wash: rgba(57, 135, 229, 0.12);
+      --good: #0ca30c;
+      --bad: #e66767;
+      --tooltip-bg: #2c2c2a;
+      --tooltip-ink: #ffffff;
+      --tooltip-ink-2: #c3c2b7;
+    }
+  }
+  :root[data-theme="light"] {
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --accent: #2a78d6;
+    --accent-strong: #1c5cab;
+    --accent-soft: #cde2fb;
+    --accent-wash: rgba(42, 120, 214, 0.10);
+    --good: #006300;
+    --bad: #d03b3b;
+    --tooltip-bg: #0b0b0b;
+    --tooltip-ink: #ffffff;
+    --tooltip-ink-2: #c3c2b7;
+  }
+  :root[data-theme="dark"] {
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --accent: #3987e5;
+    --accent-strong: #6da7ec;
+    --accent-soft: #10427f;
+    --accent-wash: rgba(57, 135, 229, 0.12);
+    --good: #0ca30c;
+    --bad: #e66767;
+    --tooltip-bg: #2c2c2a;
+    --tooltip-ink: #ffffff;
+    --tooltip-ink-2: #c3c2b7;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 32px 20px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ---------- header ---------- */
+  header .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  header .sub {
+    margin: 6px 0 0;
+    color: var(--ink-2);
+    max-width: 62ch;
+  }
+
+  /* ---------- cards ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 650;
+  }
+  .card .card-sub {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .card-actions { display: flex; gap: 8px; }
+
+  /* ---------- top layout ---------- */
+  .inputs-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 264px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .inputs-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  /* ---------- buttons ---------- */
+  button {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--baseline);
+    border-radius: 7px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+  }
+  button.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  button.ghost { border-color: transparent; color: var(--ink-2); }
+  button.ghost:hover { border-color: var(--baseline); }
+  button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  /* ---------- holdings table ---------- */
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 6px 5px;
+    border-bottom: 1px solid var(--grid);
+    white-space: nowrap;
+  }
+  td {
+    padding: 5px 6px;
+    border-bottom: 1px solid var(--grid);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  th.num, td.num { text-align: right; }
+  tr:last-child td { border-bottom: none; }
+  #holdingsTable input, #holdingsTable select {
+    font: inherit;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 5px;
+    width: 60px;
+  }
+  #holdingsTable input:hover, #holdingsTable select:hover { border-color: var(--grid); }
+  #holdingsTable input:focus, #holdingsTable select:focus { border-color: var(--accent); background: var(--surface); }
+  #holdingsTable input.ticker { width: 56px; font-weight: 650; text-transform: uppercase; }
+  #holdingsTable input.num-in { text-align: right; }
+  #holdingsTable input.growth-in { width: 48px; }
+  #holdingsTable select { width: auto; max-width: 150px; }
+  #holdingsTable .calc { color: var(--ink-2); }
+  #holdingsTable tfoot td {
+    border-top: 1px solid var(--baseline);
+    border-bottom: none;
+    font-weight: 650;
+    padding-top: 8px;
+  }
+  .row-remove {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 15px;
+    padding: 2px 6px;
+    line-height: 1;
+  }
+  .row-remove:hover { color: var(--bad); border: none; }
+  .hint { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
+  /* ---------- assumptions ---------- */
+  .fields { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .field { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .field label { font-size: 13.5px; color: var(--ink-2); }
+  .field .control { position: relative; display: flex; align-items: center; }
+  .field input[type="number"] {
+    font: inherit;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--ink);
+    background: var(--page);
+    border: 1px solid var(--grid);
+    border-radius: 7px;
+    padding: 5px 8px;
+    width: 108px;
+  }
+  .field input[type="number"]:focus { border-color: var(--accent); }
+  .field .unit {
+    position: absolute;
+    left: 9px;
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .field .unit.suffix { left: auto; right: 26px; }
+  .field input.has-prefix { padding-left: 22px; }
+  .field input.has-suffix { padding-right: 40px; }
+  .switch { position: relative; display: inline-block; width: 38px; height: 22px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track {
+    position: absolute; inset: 0;
+    background: var(--baseline);
+    border-radius: 11px;
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .switch .track::after {
+    content: "";
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--surface);
+    transition: transform 0.15s;
+  }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(16px); }
+  .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    .switch .track, .switch .track::after { transition: none; }
+  }
+  .fieldset-rule { border: none; border-top: 1px solid var(--grid); margin: 4px 0; }
+
+  /* ---------- KPI tiles ---------- */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .tile .label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .tile .value { font-size: 24px; font-weight: 650; letter-spacing: -0.01em; }
+  .tile .value.hero { font-size: 30px; }
+  .tile .delta { font-size: 12.5px; color: var(--ink-2); }
+  .tile .delta.good { color: var(--good); font-weight: 600; }
+  .tile .delta.bad { color: var(--bad); font-weight: 600; }
+  .meter {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--accent-soft);
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .meter > div { height: 100%; background: var(--accent); border-radius: 3px; }
+
+  /* ---------- charts ---------- */
+  .chart-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 820px) { .chart-row { grid-template-columns: 1fr; } }
+  .chart-card { position: relative; }
+  .chart-box { position: relative; margin-top: 8px; }
+  .chart-box svg { display: block; width: 100%; height: auto; }
+  .legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .legend .key { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .swatch-line { width: 16px; height: 0; border-top: 2px solid var(--accent); border-radius: 1px; }
+  .legend .swatch-line.ctx { border-top-color: var(--muted); }
+  .tooltip {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-ink);
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    white-space: nowrap;
+    display: none;
+  }
+  .tooltip .tt-title { color: var(--tooltip-ink-2); font-size: 11.5px; margin-bottom: 2px; }
+  .tooltip .tt-row { display: flex; align-items: center; gap: 7px; }
+  .tooltip .tt-key { width: 12px; height: 0; border-top: 2px solid var(--accent); flex: none; }
+  .tooltip .tt-key.ctx { border-top-color: var(--tooltip-ink-2); }
+  .tooltip .tt-val { font-weight: 650; font-variant-numeric: tabular-nums; }
+  .tooltip .tt-label { color: var(--tooltip-ink-2); }
+
+  /* svg text */
+  .axis-text { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .direct-label { font-size: 11.5px; font-weight: 600; fill: var(--ink-2); }
+  .annot-label { font-size: 11.5px; font-weight: 650; fill: var(--ink); }
+
+  /* ---------- projection table ---------- */
+  .proj-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; margin-top: 12px; }
+  .proj-wrap th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .proj-wrap td { font-size: 13.5px; }
+  .proj-wrap tr.crossover-row td { font-weight: 650; }
+  .proj-wrap tr.crossover-row td:first-child { border-left: 3px solid var(--accent); }
+  .pos { color: var(--good); }
+  .neg { color: var(--bad); }
+
+  footer { font-size: 12px; color: var(--muted); max-width: 78ch; }
+</style>
+
+<div class="app">
+  <header>
+    <p class="eyebrow">FIRE planning</p>
+    <h1>Dividend Income Modeler</h1>
+    <p class="sub">Enter your portfolio and assumptions below. Everything recalculates as you type: projected monthly income, burn rate, and the crossover year when dividends cover your expenses.</p>
+  </header>
+
+  <section class="inputs-grid">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Portfolio</h2>
+          <p class="card-sub">Dividend per share is the annual total. Yield and income are computed.</p>
+        </div>
+        <div class="card-actions">
+          <button id="addHolding" class="primary" type="button">Add holding</button>
+          <button id="resetSample" class="ghost" type="button">Reset to sample</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="holdingsTable">
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th class="num">Shares</th>
+              <th class="num">Price</th>
+              <th class="num">Div / share</th>
+              <th class="num">Yield</th>
+              <th class="num">Div growth</th>
+              <th>Pay schedule</th>
+              <th class="num">Income / yr</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+      <p class="hint">Your portfolio and assumptions are saved in this browser automatically.</p>
+    </div>
+
+    <div class="card">
+      <h2>Assumptions</h2>
+      <div class="fields" id="assumptionFields"></div>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="Key figures"></section>
+
+  <section class="card chart-card">
+    <div class="card-head">
+      <div>
+        <h2>Monthly income vs. expenses</h2>
+        <p class="card-sub">After-tax dividend income against inflation-adjusted spending. The crossover is your FIRE point.</p>
+      </div>
+      <div class="legend" id="incomeLegend">
+        <span class="key"><span class="swatch-line"></span>Dividend income (after tax)</span>
+        <span class="key"><span class="swatch-line ctx"></span>Monthly expenses</span>
+      </div>
+    </div>
+    <div class="chart-box" id="incomeChart"></div>
+  </section>
+
+  <div class="chart-row">
+    <section class="card chart-card">
+      <div class="card-head">
+        <div>
+          <h2>Portfolio value</h2>
+          <p class="card-sub">Market value with reinvestment, contributions, and price growth.</p>
+        </div>
+      </div>
+      <div class="chart-box" id="valueChart"></div>
+    </section>
+
+    <section class="card chart-card">
+      <div class="card-head">
+        <div>
+          <h2>Dividend calendar — next 12 months</h2>
+          <p class="card-sub">After-tax income by month, from each holding's pay schedule.</p>
+        </div>
+      </div>
+      <div class="chart-box" id="calendarChart"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Year-by-year projection</h2>
+        <p class="card-sub">The full model behind the charts. The highlighted row is the crossover year.</p>
+      </div>
+    </div>
+    <div class="proj-wrap">
+      <table id="projTable">
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th class="num">Portfolio value</th>
+            <th class="num">Dividends / yr (net)</th>
+            <th class="num">Monthly income</th>
+            <th class="num">Monthly expenses</th>
+            <th class="num">Coverage</th>
+            <th class="num">Net burn / mo</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    A planning sketch, not advice. The model compounds annually: dividends grow at each holding's rate, prices at the shared growth rate, expenses with inflation. Reinvested dividends and contributions buy shares at projected prices; taxes come off dividends at your flat rate. Real portfolios cut, freeze, and surprise.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- state ---------------- */
+
+  var STORAGE_KEY = "dividend-modeler-v1";
+  var THIS_YEAR = new Date().getFullYear();
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  var SCHEDULES = {
+    m:  { label: "Every month",     months: [0,1,2,3,4,5,6,7,8,9,10,11] },
+    q1: { label: "Jan/Apr/Jul/Oct", months: [0,3,6,9] },
+    q2: { label: "Feb/May/Aug/Nov", months: [1,4,7,10] },
+    q3: { label: "Mar/Jun/Sep/Dec", months: [2,5,8,11] },
+    s:  { label: "Jun & Dec",       months: [5,11] },
+    a:  { label: "Dec only",        months: [11] }
+  };
+
+  function sampleState() {
+    return {
+      holdings: [
+        { id: uid(), ticker: "SCHD", shares: 400, price: 27.50,  dps: 1.06, growth: 8,   sched: "q3" },
+        { id: uid(), ticker: "VYM",  shares: 60,  price: 135.00, dps: 3.60, growth: 6,   sched: "q3" },
+        { id: uid(), ticker: "O",    shares: 150, price: 58.00,  dps: 3.16, growth: 3,   sched: "m"  },
+        { id: uid(), ticker: "JEPQ", shares: 120, price: 57.00,  dps: 5.40, growth: 1,   sched: "m"  }
+      ],
+      assumptions: {
+        monthlyContribution: 1500,
+        contributionYears: 15,
+        drip: true,
+        taxRate: 15,
+        priceGrowth: 5,
+        inflation: 3,
+        monthlyExpenses: 4000,
+        years: 30
+      }
+    };
+  }
+
+  function uid() { return "h" + Math.random().toString(36).slice(2, 9); }
+
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return sampleState();
+      var s = JSON.parse(raw);
+      if (!s || !Array.isArray(s.holdings) || !s.assumptions) return sampleState();
+      s.holdings.forEach(function (h) {
+        if (!h.id) h.id = uid();
+        if (!SCHEDULES[h.sched]) h.sched = "q1";
+      });
+      var d = sampleState().assumptions;
+      for (var k in d) if (!(k in s.assumptions)) s.assumptions[k] = d[k];
+      return s;
+    } catch (e) {
+      return sampleState();
+    }
+  }
+
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
+  }
+
+  var state = loadState();
+
+  /* ---------------- model ---------------- */
+
+  function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+
+  function project() {
+    var a = state.assumptions;
+    var years = Math.max(1, Math.min(60, Math.round(a.years)));
+    var tax = Math.min(60, Math.max(0, a.taxRate)) / 100;
+    var infl = a.inflation / 100;
+    var pg = a.priceGrowth / 100;
+
+    var hs = state.holdings.map(function (h) {
+      return {
+        shares: Math.max(0, num(h.shares)),
+        price: Math.max(0.01, num(h.price)),
+        dps: Math.max(0, num(h.dps)),
+        g: num(h.growth) / 100
+      };
+    });
+
+    var expM = Math.max(0, a.monthlyExpenses);
+    var rows = [];
+
+    for (var y = 0; y <= years; y++) {
+      var value = 0, gross = 0;
+      hs.forEach(function (h) { value += h.shares * h.price; gross += h.shares * h.dps; });
+      var net = gross * (1 - tax);
+      rows.push({
+        year: THIS_YEAR + y,
+        offset: y,
+        value: value,
+        gross: gross,
+        net: net,
+        mIncome: net / 12,
+        mExpenses: expM,
+        coverage: expM > 0 ? (net / 12) / expM : null,
+        burn: expM - net / 12
+      });
+
+      /* advance one year */
+      hs.forEach(function (h) {
+        if (a.drip && h.price > 0) h.shares += (h.shares * h.dps * (1 - tax)) / h.price;
+      });
+      if (y < a.contributionYears && a.monthlyContribution > 0) {
+        var tv = 0;
+        hs.forEach(function (h) { tv += h.shares * h.price; });
+        var contrib = a.monthlyContribution * 12;
+        hs.forEach(function (h) {
+          var w = tv > 0 ? (h.shares * h.price) / tv : 1 / (hs.length || 1);
+          if (h.price > 0) h.shares += (contrib * w) / h.price;
+        });
+      }
+      hs.forEach(function (h) { h.dps *= 1 + h.g; h.price *= 1 + pg; });
+      expM *= 1 + infl;
+    }
+    return rows;
+  }
+
+  function findCrossover(rows) {
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].mExpenses <= 0) return rows[i];
+      if (rows[i].mIncome >= rows[i].mExpenses) return rows[i];
+    }
+    return null;
+  }
+
+  function monthlyCalendar() {
+    var tax = Math.min(60, Math.max(0, state.assumptions.taxRate)) / 100;
+    var out = MONTHS.map(function (m) { return { month: m, amount: 0 }; });
+    state.holdings.forEach(function (h) {
+      var sched = SCHEDULES[h.sched] || SCHEDULES.q1;
+      var perPay = (Math.max(0, num(h.shares)) * Math.max(0, num(h.dps)) * (1 - tax)) / sched.months.length;
+      sched.months.forEach(function (m) { out[m].amount += perPay; });
+    });
+    return out;
+  }
+
+  /* ---------------- formatting ---------------- */
+
+  function fmtMoney(x, decimals) {
+    var d = decimals == null ? 0 : decimals;
+    var sign = x < 0 ? "−" : "";
+    return sign + "$" + Math.abs(x).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function fmtCompact(x) {
+    var abs = Math.abs(x), sign = x < 0 ? "−" : "";
+    if (abs >= 1e6) return sign + "$" + trim1(abs / 1e6) + "M";
+    if (abs >= 1e3) return sign + "$" + trim1(abs / 1e3) + "K";
+    return sign + "$" + Math.round(abs);
+  }
+  function trim1(v) {
+    var s = v >= 100 ? Math.round(v).toString() : (Math.round(v * 10) / 10).toString();
+    return s;
+  }
+  function fmtPct(x, decimals) {
+    var d = decimals == null ? 0 : decimals;
+    return (x * 100).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }) + "%";
+  }
+
+  /* ---------------- holdings table ---------------- */
+
+  var holdingsBody = document.querySelector("#holdingsTable tbody");
+  var holdingsFoot = document.querySelector("#holdingsTable tfoot");
+
+  function cellInput(cls, value, step, onchange) {
+    var td = document.createElement("td");
+    td.className = "num";
+    var input = document.createElement("input");
+    input.type = "number";
+    input.className = "num-in " + cls;
+    input.step = step;
+    input.min = cls === "growth-in" ? "-50" : "0";
+    input.value = value;
+    input.addEventListener("input", function () { onchange(num(input.value)); update(false); });
+    td.appendChild(input);
+    return td;
+  }
+
+  function renderHoldings() {
+    holdingsBody.textContent = "";
+    holdingsFoot.textContent = "";
+
+    state.holdings.forEach(function (h) {
+      var tr = document.createElement("tr");
+
+      var tdT = document.createElement("td");
+      var tick = document.createElement("input");
+      tick.type = "text";
+      tick.className = "ticker";
+      tick.maxLength = 8;
+      tick.value = h.ticker;
+      tick.setAttribute("aria-label", "Ticker");
+      tick.addEventListener("input", function () { h.ticker = tick.value.toUpperCase(); update(false); });
+      tdT.appendChild(tick);
+      tr.appendChild(tdT);
+
+      tr.appendChild(cellInput("", h.shares, "1", function (v) { h.shares = v; }));
+      tr.appendChild(cellInput("", h.price, "0.01", function (v) { h.price = v; }));
+      tr.appendChild(cellInput("", h.dps, "0.01", function (v) { h.dps = v; }));
+
+      var tdYield = document.createElement("td");
+      tdYield.className = "num calc";
+      tdYield.dataset.role = "yield";
+      tr.appendChild(tdYield);
+
+      tr.appendChild(cellInput("growth-in", h.growth, "0.5", function (v) { h.growth = v; }));
+
+      var tdS = document.createElement("td");
+      var sel = document.createElement("select");
+      sel.setAttribute("aria-label", "Pay schedule");
+      Object.keys(SCHEDULES).forEach(function (key) {
+        var opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = SCHEDULES[key].label;
+        if (key === h.sched) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      sel.addEventListener("change", function () { h.sched = sel.value; update(false); });
+      tdS.appendChild(sel);
+      tr.appendChild(tdS);
+
+      var tdI = document.createElement("td");
+      tdI.className = "num calc";
+      tdI.dataset.role = "income";
+      tr.appendChild(tdI);
+
+      var tdX = document.createElement("td");
+      var rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "row-remove";
+      rm.textContent = "×";
+      rm.setAttribute("aria-label", "Remove " + (h.ticker || "holding"));
+      rm.addEventListener("click", function () {
+        state.holdings = state.holdings.filter(function (x) { return x.id !== h.id; });
+        update(true);
+      });
+      tdX.appendChild(rm);
+      tr.appendChild(tdX);
+
+      tr.dataset.id = h.id;
+      holdingsBody.appendChild(tr);
+    });
+
+    var foot = document.createElement("tr");
+    for (var i = 0; i < 9; i++) {
+      var td = document.createElement("td");
+      if (i === 0) td.textContent = "Total";
+      if (i === 4 || i === 7) td.className = "num";
+      if (i === 4) td.dataset.role = "t-yield";
+      if (i === 7) td.dataset.role = "t-income";
+      foot.appendChild(td);
+    }
+    holdingsFoot.appendChild(foot);
+
+    refreshHoldingCalcs();
+  }
+
+  function refreshHoldingCalcs() {
+    var totalV = 0, totalI = 0;
+    state.holdings.forEach(function (h) {
+      var tr = holdingsBody.querySelector('tr[data-id="' + h.id + '"]');
+      if (!tr) return;
+      var v = Math.max(0, num(h.shares)) * Math.max(0, num(h.price));
+      var inc = Math.max(0, num(h.shares)) * Math.max(0, num(h.dps));
+      totalV += v; totalI += inc;
+      var yld = num(h.price) > 0 ? num(h.dps) / num(h.price) : 0;
+      tr.querySelector('[data-role="yield"]').textContent = fmtPct(yld, 2);
+      tr.querySelector('[data-role="income"]').textContent = fmtMoney(inc);
+    });
+    var ty = holdingsFoot.querySelector('[data-role="t-yield"]');
+    if (ty) {
+      ty.textContent = totalV > 0 ? fmtPct(totalI / totalV, 2) : "—";
+      holdingsFoot.querySelector('[data-role="t-income"]').textContent = fmtMoney(totalI);
+    }
+  }
+
+  document.getElementById("addHolding").addEventListener("click", function () {
+    state.holdings.push({ id: uid(), ticker: "", shares: 0, price: 0, dps: 0, growth: 5, sched: "q1" });
+    update(true);
+    var last = holdingsBody.querySelector("tr:last-child .ticker");
+    if (last) last.focus();
+  });
+
+  document.getElementById("resetSample").addEventListener("click", function () {
+    state = sampleState();
+    update(true);
+  });
+
+  /* ---------------- assumptions ---------------- */
+
+  var ASSUMPTION_DEFS = [
+    { key: "monthlyExpenses",     label: "Monthly expenses (burn rate)", prefix: "$", step: 100 },
+    { key: "monthlyContribution", label: "Monthly contribution",         prefix: "$", step: 100 },
+    { key: "contributionYears",   label: "Years contributing",           suffix: "yrs", step: 1 },
+    { key: "drip",                label: "Reinvest dividends (DRIP)",    toggle: true },
+    { rule: true },
+    { key: "taxRate",             label: "Dividend tax rate",            suffix: "%", step: 1 },
+    { key: "priceGrowth",         label: "Share price growth",           suffix: "%/yr", step: 0.5 },
+    { key: "inflation",           label: "Inflation",                    suffix: "%/yr", step: 0.5 },
+    { key: "years",               label: "Projection horizon",           suffix: "yrs", step: 5 }
+  ];
+
+  function renderAssumptions() {
+    var wrap = document.getElementById("assumptionFields");
+    wrap.textContent = "";
+    ASSUMPTION_DEFS.forEach(function (def) {
+      if (def.rule) {
+        var hr = document.createElement("hr");
+        hr.className = "fieldset-rule";
+        wrap.appendChild(hr);
+        return;
+      }
+      var row = document.createElement("div");
+      row.className = "field";
+      var label = document.createElement("label");
+      label.textContent = def.label;
+      var id = "as-" + def.key;
+      label.htmlFor = id;
+      row.appendChild(label);
+
+      if (def.toggle) {
+        var sw = document.createElement("span");
+        sw.className = "switch";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.id = id;
+        cb.checked = !!state.assumptions[def.key];
+        cb.addEventListener("change", function () {
+          state.assumptions[def.key] = cb.checked;
+          update(false);
+        });
+        var track = document.createElement("label");
+        track.className = "track";
+        track.htmlFor = id;
+        sw.appendChild(cb);
+        sw.appendChild(track);
+        row.appendChild(sw);
+      } else {
+        var ctl = document.createElement("span");
+        ctl.className = "control";
+        var input = document.createElement("input");
+        input.type = "number";
+        input.id = id;
+        input.step = def.step;
+        input.min = def.key === "priceGrowth" ? -20 : 0;
+        input.value = state.assumptions[def.key];
+        if (def.prefix) {
+          input.classList.add("has-prefix");
+          var u = document.createElement("span");
+          u.className = "unit";
+          u.textContent = def.prefix;
+          ctl.appendChild(u);
+        }
+        ctl.appendChild(input);
+        if (def.suffix) {
+          input.classList.add("has-suffix");
+          var s = document.createElement("span");
+          s.className = "unit suffix";
+          s.textContent = def.suffix;
+          ctl.appendChild(s);
+        }
+        input.addEventListener("input", function () {
+          state.assumptions[def.key] = num(input.value);
+          update(false);
+        });
+        row.appendChild(ctl);
+      }
+      wrap.appendChild(row);
+    });
+  }
+
+  /* ---------------- KPI tiles ---------------- */
+
+  function renderKpis(rows, crossover) {
+    var wrap = document.getElementById("kpis");
+    wrap.textContent = "";
+    var now = rows[0];
+
+    function tile(label, value, opts) {
+      var t = document.createElement("div");
+      t.className = "tile";
+      var l = document.createElement("div");
+      l.className = "label";
+      l.textContent = label;
+      var v = document.createElement("div");
+      v.className = "value" + (opts && opts.hero ? " hero" : "");
+      v.textContent = value;
+      t.appendChild(l);
+      t.appendChild(v);
+      if (opts && opts.delta) {
+        var d = document.createElement("div");
+        d.className = "delta" + (opts.deltaClass ? " " + opts.deltaClass : "");
+        d.textContent = opts.delta;
+        t.appendChild(d);
+      }
+      if (opts && opts.meter != null) {
+        var m = document.createElement("div");
+        m.className = "meter";
+        var fill = document.createElement("div");
+        fill.style.width = Math.min(100, Math.max(0, opts.meter * 100)) + "%";
+        m.appendChild(fill);
+        t.appendChild(m);
+      }
+      wrap.appendChild(t);
+    }
+
+    tile("Portfolio value", fmtMoney(now.value), {
+      delta: fmtPct(now.value > 0 ? now.gross / now.value : 0, 2) + " yield"
+    });
+
+    tile("Monthly income today", fmtMoney(now.mIncome), {
+      delta: fmtMoney(now.net) + " / yr after tax"
+    });
+
+    var cov = now.coverage;
+    tile("Expenses covered", cov == null ? "—" : fmtPct(cov, 0), {
+      meter: cov == null ? 0 : cov,
+      delta: cov == null ? "No expenses entered" : (cov >= 1 ? "Fully covered" : fmtMoney(now.mExpenses - now.mIncome) + " / mo short")
+    });
+
+    var burn = now.burn;
+    tile("Net monthly burn", burn > 0 ? fmtMoney(burn) : fmtMoney(-burn), {
+      delta: burn > 0 ? "spending not covered by dividends" : "monthly surplus after expenses",
+      deltaClass: burn > 0 ? "bad" : "good"
+    });
+
+    if (crossover) {
+      var inYears = crossover.offset;
+      tile("Crossover year", String(crossover.year), {
+        hero: true,
+        delta: inYears === 0 ? "You are FIRE now" : "in " + inYears + " year" + (inYears === 1 ? "" : "s") + " — income exceeds expenses",
+        deltaClass: "good"
+      });
+    } else {
+      tile("Crossover year", "—", {
+        hero: true,
+        delta: "beyond the " + Math.round(state.assumptions.years) + "-year horizon",
+        deltaClass: "bad"
+      });
+    }
+  }
+
+  /* ---------------- chart helpers ---------------- */
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  function el(name, attrs, parent) {
+    var e = document.createElementNS(SVG_NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  function niceTicks(max, count) {
+    if (max <= 0) return [0, 1];
+    var rough = max / count;
+    var mag = Math.pow(10, Math.floor(Math.log10(rough)));
+    var candidates = [1, 2, 2.5, 5, 10];
+    var step = mag * 10;
+    for (var i = 0; i < candidates.length; i++) {
+      if (candidates[i] * mag >= rough) { step = candidates[i] * mag; break; }
+    }
+    var ticks = [];
+    for (var v = 0; v <= max + step * 0.001; v += step) ticks.push(v);
+    if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
+    return ticks;
+  }
+
+  function drawXTicks(svg, rows, X, H, target) {
+    var xStep = Math.max(1, Math.ceil(rows.length / target));
+    var lastIdx = rows.length - 1;
+    rows.forEach(function (r, i) {
+      var regular = i % xStep === 0 && lastIdx - i >= xStep * 0.6;
+      if (!regular && i !== lastIdx) return;
+      var txt = el("text", { x: X(r.year), y: H - 6, "text-anchor": "middle", "class": "axis-text" }, svg);
+      txt.textContent = r.year;
+    });
+  }
+
+  function makeTooltip(box) {
+    var tt = box.parentElement.querySelector(".tooltip");
+    if (!tt) {
+      tt = document.createElement("div");
+      tt.className = "tooltip";
+      box.appendChild(tt);
+    }
+    return tt;
+  }
+
+  function positionTooltip(box, tt, x, y) {
+    var bw = box.clientWidth;
+    var tw = tt.offsetWidth, th = tt.offsetHeight;
+    var left = x + 14;
+    if (left + tw > bw - 4) left = x - tw - 14;
+    if (left < 4) left = 4;
+    var top = y - th - 10;
+    if (top < 4) top = y + 14;
+    tt.style.left = left + "px";
+    tt.style.top = top + "px";
+  }
+
+  function ttRow(tt, keyClass, value, label) {
+    var row = document.createElement("div");
+    row.className = "tt-row";
+    var key = document.createElement("span");
+    key.className = "tt-key" + (keyClass ? " " + keyClass : "");
+    row.appendChild(key);
+    var val = document.createElement("span");
+    val.className = "tt-val";
+    val.textContent = value;
+    row.appendChild(val);
+    var lab = document.createElement("span");
+    lab.className = "tt-label";
+    lab.textContent = label;
+    row.appendChild(lab);
+    tt.appendChild(row);
+  }
+
+  var css = getComputedStyle(document.documentElement);
+  function tok(name) { return css.getPropertyValue(name).trim(); }
+
+  /* ---------------- income vs expenses chart ---------------- */
+
+  function renderIncomeChart(rows, crossover) {
+    var box = document.getElementById("incomeChart");
+    box.textContent = "";
+    var W = Math.max(320, box.clientWidth);
+    var H = 280;
+    var pad = { top: 18, right: 118, bottom: 26, left: 52 };
+    var iw = W - pad.left - pad.right, ih = H - pad.top - pad.bottom;
+
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "img",
+      "aria-label": "Projected monthly dividend income versus monthly expenses by year" });
+    box.appendChild(svg);
+
+    var maxY = 0;
+    rows.forEach(function (r) { maxY = Math.max(maxY, r.mIncome, r.mExpenses); });
+    var ticks = niceTicks(maxY * 1.05 || 1, 4);
+    var yMax = ticks[ticks.length - 1];
+
+    var x0 = rows[0].year, x1 = rows[rows.length - 1].year;
+    function X(year) { return pad.left + (x1 === x0 ? 0 : (year - x0) / (x1 - x0) * iw); }
+    function Y(v) { return pad.top + ih - (v / yMax) * ih; }
+
+    ticks.forEach(function (t) {
+      el("line", { x1: pad.left, x2: pad.left + iw, y1: Y(t), y2: Y(t),
+        stroke: t === 0 ? tok("--baseline") : tok("--grid"), "stroke-width": 1 }, svg);
+      var txt = el("text", { x: pad.left - 8, y: Y(t) + 4, "text-anchor": "end", "class": "axis-text" }, svg);
+      txt.textContent = fmtCompact(t);
+    });
+
+    drawXTicks(svg, rows, X, H, 7);
+
+    function path(get) {
+      return rows.map(function (r, i) { return (i ? "L" : "M") + X(r.year).toFixed(1) + " " + Y(get(r)).toFixed(1); }).join(" ");
+    }
+
+    el("path", { d: path(function (r) { return r.mExpenses; }), fill: "none",
+      stroke: tok("--muted"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+
+    el("path", { d: path(function (r) { return r.mIncome; }) + " L" + X(x1).toFixed(1) + " " + Y(0) + " L" + X(x0).toFixed(1) + " " + Y(0) + " Z",
+      fill: tok("--accent"), opacity: 0.10, stroke: "none" }, svg);
+    el("path", { d: path(function (r) { return r.mIncome; }), fill: "none",
+      stroke: tok("--accent"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+
+    /* endpoint labels */
+    var last = rows[rows.length - 1];
+    var eIncY = Y(last.mIncome), eExpY = Y(last.mExpenses);
+    if (Math.abs(eIncY - eExpY) < 14) {
+      if (eIncY < eExpY) { eIncY -= (14 - Math.abs(eIncY - eExpY)) / 2; eExpY += (14 - Math.abs(eIncY - eExpY)) / 2; }
+      else { eExpY -= 7; eIncY += 7; }
+    }
+    var l1 = el("text", { x: X(x1) + 8, y: eIncY + 4, "class": "direct-label", fill: tok("--ink-2") }, svg);
+    l1.textContent = fmtCompact(last.mIncome) + " income";
+    var l2 = el("text", { x: X(x1) + 8, y: eExpY + 4, "class": "direct-label", fill: tok("--muted") }, svg);
+    l2.textContent = fmtCompact(last.mExpenses) + " expenses";
+
+    /* crossover marker */
+    if (crossover && crossover.offset > 0) {
+      var cx = X(crossover.year), cy = Y(crossover.mIncome);
+      el("circle", { cx: cx, cy: cy, r: 6, fill: tok("--accent"), stroke: tok("--surface"), "stroke-width": 2 }, svg);
+      var anchor = cx > pad.left + iw * 0.72 ? "end" : "start";
+      var lx = anchor === "end" ? cx - 10 : cx + 10;
+      var at = el("text", { x: lx, y: cy - 10, "text-anchor": anchor, "class": "annot-label" }, svg);
+      at.textContent = "Crossover " + crossover.year;
+    }
+
+    /* hover: crosshair + tooltip */
+    var tt = makeTooltip(box);
+    var cross = el("line", { y1: pad.top, y2: pad.top + ih, stroke: tok("--baseline"), "stroke-width": 1, opacity: 0 }, svg);
+    var dotI = el("circle", { r: 5, fill: tok("--accent"), stroke: tok("--surface"), "stroke-width": 2, opacity: 0 }, svg);
+    var dotE = el("circle", { r: 5, fill: tok("--muted"), stroke: tok("--surface"), "stroke-width": 2, opacity: 0 }, svg);
+    var overlay = el("rect", { x: pad.left, y: pad.top, width: iw, height: ih, fill: "transparent" }, svg);
+
+    overlay.addEventListener("pointermove", function (ev) {
+      var rect = svg.getBoundingClientRect();
+      var px = (ev.clientX - rect.left) * (W / rect.width);
+      var idx = 0, best = Infinity;
+      rows.forEach(function (r, i) {
+        var d = Math.abs(X(r.year) - px);
+        if (d < best) { best = d; idx = i; }
+      });
+      var r = rows[idx], xr = X(r.year);
+      cross.setAttribute("x1", xr); cross.setAttribute("x2", xr); cross.setAttribute("opacity", 1);
+      dotI.setAttribute("cx", xr); dotI.setAttribute("cy", Y(r.mIncome)); dotI.setAttribute("opacity", 1);
+      dotE.setAttribute("cx", xr); dotE.setAttribute("cy", Y(r.mExpenses)); dotE.setAttribute("opacity", 1);
+
+      tt.textContent = "";
+      var title = document.createElement("div");
+      title.className = "tt-title";
+      title.textContent = r.year + (r.offset === 0 ? " · today" : " · year " + r.offset);
+      tt.appendChild(title);
+      ttRow(tt, "", fmtMoney(r.mIncome) + " /mo", "dividend income");
+      ttRow(tt, "ctx", fmtMoney(r.mExpenses) + " /mo", "expenses");
+      var covLine = document.createElement("div");
+      covLine.className = "tt-title";
+      covLine.textContent = r.coverage == null ? "" : fmtPct(r.coverage, 0) + " of expenses covered";
+      tt.appendChild(covLine);
+      tt.style.display = "block";
+      positionTooltip(box, tt, xr * (rect.width / W), Y(r.mIncome) * (rect.height / H));
+    });
+    overlay.addEventListener("pointerleave", function () {
+      tt.style.display = "none";
+      cross.setAttribute("opacity", 0);
+      dotI.setAttribute("opacity", 0);
+      dotE.setAttribute("opacity", 0);
+    });
+  }
+
+  /* ---------------- portfolio value chart ---------------- */
+
+  function renderValueChart(rows) {
+    var box = document.getElementById("valueChart");
+    box.textContent = "";
+    var W = Math.max(280, box.clientWidth);
+    var H = 240;
+    var pad = { top: 20, right: 66, bottom: 26, left: 54 };
+    var iw = W - pad.left - pad.right, ih = H - pad.top - pad.bottom;
+
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "img",
+      "aria-label": "Projected portfolio value by year" }, null);
+    box.appendChild(svg);
+
+    var maxY = 0;
+    rows.forEach(function (r) { maxY = Math.max(maxY, r.value); });
+    var ticks = niceTicks(maxY * 1.05 || 1, 4);
+    var yMax = ticks[ticks.length - 1];
+    var x0 = rows[0].year, x1 = rows[rows.length - 1].year;
+    function X(year) { return pad.left + (x1 === x0 ? 0 : (year - x0) / (x1 - x0) * iw); }
+    function Y(v) { return pad.top + ih - (v / yMax) * ih; }
+
+    ticks.forEach(function (t) {
+      el("line", { x1: pad.left, x2: pad.left + iw, y1: Y(t), y2: Y(t),
+        stroke: t === 0 ? tok("--baseline") : tok("--grid"), "stroke-width": 1 }, svg);
+      var txt = el("text", { x: pad.left - 8, y: Y(t) + 4, "text-anchor": "end", "class": "axis-text" }, svg);
+      txt.textContent = fmtCompact(t);
+    });
+    drawXTicks(svg, rows, X, H, 5);
+
+    var line = rows.map(function (r, i) { return (i ? "L" : "M") + X(r.year).toFixed(1) + " " + Y(r.value).toFixed(1); }).join(" ");
+    el("path", { d: line + " L" + X(x1).toFixed(1) + " " + Y(0) + " L" + X(x0).toFixed(1) + " " + Y(0) + " Z",
+      fill: tok("--accent"), opacity: 0.10 }, svg);
+    el("path", { d: line, fill: "none", stroke: tok("--accent"), "stroke-width": 2,
+      "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+
+    var last = rows[rows.length - 1];
+    el("circle", { cx: X(x1), cy: Y(last.value), r: 4, fill: tok("--accent"),
+      stroke: tok("--surface"), "stroke-width": 2 }, svg);
+    var lbl = el("text", { x: X(x1) + 8, y: Y(last.value) + 4, "class": "direct-label" }, svg);
+    lbl.textContent = fmtCompact(last.value);
+
+    var tt = makeTooltip(box);
+    var cross = el("line", { y1: pad.top, y2: pad.top + ih, stroke: tok("--baseline"), "stroke-width": 1, opacity: 0 }, svg);
+    var dot = el("circle", { r: 5, fill: tok("--accent"), stroke: tok("--surface"), "stroke-width": 2, opacity: 0 }, svg);
+    var overlay = el("rect", { x: pad.left, y: pad.top, width: iw, height: ih, fill: "transparent" }, svg);
+    overlay.addEventListener("pointermove", function (ev) {
+      var rect = svg.getBoundingClientRect();
+      var px = (ev.clientX - rect.left) * (W / rect.width);
+      var idx = 0, best = Infinity;
+      rows.forEach(function (r, i) { var d = Math.abs(X(r.year) - px); if (d < best) { best = d; idx = i; } });
+      var r = rows[idx], xr = X(r.year);
+      cross.setAttribute("x1", xr); cross.setAttribute("x2", xr); cross.setAttribute("opacity", 1);
+      dot.setAttribute("cx", xr); dot.setAttribute("cy", Y(r.value)); dot.setAttribute("opacity", 1);
+      tt.textContent = "";
+      var title = document.createElement("div");
+      title.className = "tt-title";
+      title.textContent = String(r.year);
+      tt.appendChild(title);
+      ttRow(tt, "", fmtMoney(r.value), "portfolio value");
+      ttRow(tt, "", fmtMoney(r.net), "dividends that year (net)");
+      tt.style.display = "block";
+      positionTooltip(box, tt, xr * (rect.width / W), Y(r.value) * (rect.height / H));
+    });
+    overlay.addEventListener("pointerleave", function () {
+      tt.style.display = "none"; cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0);
+    });
+  }
+
+  /* ---------------- dividend calendar chart ---------------- */
+
+  function renderCalendarChart() {
+    var data = monthlyCalendar();
+    var box = document.getElementById("calendarChart");
+    box.textContent = "";
+    var W = Math.max(280, box.clientWidth);
+    var H = 240;
+    var pad = { top: 22, right: 12, bottom: 26, left: 46 };
+    var iw = W - pad.left - pad.right, ih = H - pad.top - pad.bottom;
+
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "img",
+      "aria-label": "After-tax dividend income by calendar month" }, null);
+    box.appendChild(svg);
+
+    var maxY = 0;
+    data.forEach(function (d) { maxY = Math.max(maxY, d.amount); });
+    var ticks = niceTicks(maxY * 1.1 || 1, 3);
+    var yMax = ticks[ticks.length - 1];
+    function Y(v) { return pad.top + ih - (v / yMax) * ih; }
+
+    ticks.forEach(function (t) {
+      el("line", { x1: pad.left, x2: pad.left + iw, y1: Y(t), y2: Y(t),
+        stroke: t === 0 ? tok("--baseline") : tok("--grid"), "stroke-width": 1 }, svg);
+      var txt = el("text", { x: pad.left - 8, y: Y(t) + 4, "text-anchor": "end", "class": "axis-text" }, svg);
+      txt.textContent = fmtCompact(t);
+    });
+
+    var band = iw / 12;
+    var bw = Math.min(24, band - 4);
+    var maxIdx = 0;
+    data.forEach(function (d, i) { if (d.amount > data[maxIdx].amount) maxIdx = i; });
+
+    var tt = makeTooltip(box);
+
+    data.forEach(function (d, i) {
+      var bx = pad.left + band * i + (band - bw) / 2;
+      var by = Y(d.amount);
+      var h = Math.max(0, pad.top + ih - by);
+      var r = Math.min(4, bw / 2, h);
+      var dPath;
+      if (h <= 0.5) {
+        dPath = null;
+      } else {
+        dPath = "M" + bx + " " + (pad.top + ih) +
+          " L" + bx + " " + (by + r) +
+          " Q" + bx + " " + by + " " + (bx + r) + " " + by +
+          " L" + (bx + bw - r) + " " + by +
+          " Q" + (bx + bw) + " " + by + " " + (bx + bw) + " " + (by + r) +
+          " L" + (bx + bw) + " " + (pad.top + ih) + " Z";
+      }
+      var bar = dPath ? el("path", { d: dPath, fill: tok("--accent") }, svg) : null;
+
+      var mx = el("text", { x: pad.left + band * i + band / 2, y: H - 6, "text-anchor": "middle", "class": "axis-text" }, svg);
+      mx.textContent = d.month;
+
+      if (i === maxIdx && d.amount > 0) {
+        var lbl = el("text", { x: pad.left + band * i + band / 2, y: by - 6, "text-anchor": "middle", "class": "direct-label" }, svg);
+        lbl.textContent = fmtCompact(d.amount);
+      }
+
+      var hit = el("rect", { x: pad.left + band * i, y: pad.top, width: band, height: ih,
+        fill: "transparent", tabindex: 0, role: "img",
+        "aria-label": d.month + ": " + fmtMoney(d.amount) + " after-tax dividends" }, svg);
+
+      function show(clientX) {
+        if (bar) bar.setAttribute("fill", tok("--accent-strong"));
+        tt.textContent = "";
+        var title = document.createElement("div");
+        title.className = "tt-title";
+        title.textContent = d.month;
+        tt.appendChild(title);
+        ttRow(tt, "", fmtMoney(d.amount), "after-tax dividends");
+        tt.style.display = "block";
+        var rect = svg.getBoundingClientRect();
+        positionTooltip(box, tt,
+          (pad.left + band * i + band / 2) * (rect.width / W),
+          by * (rect.height / H));
+      }
+      function hide() {
+        if (bar) bar.setAttribute("fill", tok("--accent"));
+        tt.style.display = "none";
+      }
+      hit.addEventListener("pointermove", function (ev) { show(ev.clientX); });
+      hit.addEventListener("pointerleave", hide);
+      hit.addEventListener("focus", function () { show(null); });
+      hit.addEventListener("blur", hide);
+    });
+  }
+
+  /* ---------------- projection table ---------------- */
+
+  function renderProjTable(rows, crossover) {
+    var body = document.querySelector("#projTable tbody");
+    body.textContent = "";
+    rows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      if (crossover && r.year === crossover.year) tr.className = "crossover-row";
+      function td(text, cls) {
+        var c = document.createElement("td");
+        c.textContent = text;
+        c.className = "num" + (cls ? " " + cls : "");
+        tr.appendChild(c);
+      }
+      var y = document.createElement("td");
+      y.textContent = r.year + (r.offset === 0 ? " (now)" : "");
+      tr.appendChild(y);
+      td(fmtMoney(r.value));
+      td(fmtMoney(r.net));
+      td(fmtMoney(r.mIncome));
+      td(fmtMoney(r.mExpenses));
+      td(r.coverage == null ? "—" : fmtPct(r.coverage, 0));
+      td(r.burn > 0 ? fmtMoney(r.burn) : "+" + fmtMoney(-r.burn), r.burn > 0 ? "neg" : "pos");
+      body.appendChild(tr);
+    });
+  }
+
+  /* ---------------- orchestration ---------------- */
+
+  function update(fullRebuild) {
+    saveState();
+    if (fullRebuild) renderHoldings();
+    else refreshHoldingCalcs();
+    var rows = project();
+    var crossover = findCrossover(rows);
+    renderKpis(rows, crossover);
+    renderIncomeChart(rows, crossover);
+    renderValueChart(rows);
+    renderCalendarChart();
+    renderProjTable(rows, crossover);
+  }
+
+  var resizeQueued = false;
+  window.addEventListener("resize", function () {
+    if (resizeQueued) return;
+    resizeQueued = true;
+    requestAnimationFrame(function () {
+      resizeQueued = false;
+      var rows = project();
+      var crossover = findCrossover(rows);
+      renderIncomeChart(rows, crossover);
+      renderValueChart(rows);
+      renderCalendarChart();
+    });
+  });
+
+  /* re-render charts when the artifact viewer toggles theme */
+  new MutationObserver(function () {
+    css = getComputedStyle(document.documentElement);
+    update(false);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+      css = getComputedStyle(document.documentElement);
+      update(false);
+    });
+  }
+
+  renderAssumptions();
+  renderHoldings();
+  update(false);
+})();
+</script>
+</body>
+</html>
